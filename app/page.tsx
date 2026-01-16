@@ -15,8 +15,6 @@ export default function Home() {
     selectConversation,
     deleteConversation,
     addMessage,
-    error,
-    clearError
   } = useChat();
 
   return (
@@ -55,8 +53,6 @@ export default function Home() {
         <ChatArea
           messages={activeConversation?.messages || []}
           isLoading={isLoading}
-          error={error}
-          clearError={clearError}
         />
 
         {/* Input Area */}
