@@ -1,11 +1,11 @@
-'use client'
+"use client";
 
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { v4 as uuidv4 } from 'uuid'
-import Logo from './Logo'
-import ChatMessage from './ChatMessage'
-import TypingIndicator from './TypingIndicator'
-import SessionsSidebar from './SessionsSidebar'
+import { useState, useRef, useEffect, useCallback } from "react";
+import { v4 as uuidv4 } from "uuid";
+import Logo from "./Logo";
+import ChatMessage from "./ChatMessage";
+import TypingIndicator from "./TypingIndicator";
+import SessionsSidebar from "./SessionsSidebar";
 import {
   Message,
   ApiResponse,
@@ -13,214 +13,217 @@ import {
   ChartResponse,
   RawMessage,
   SessionMessagesResponse,
-} from '@/types/chat'
+} from "@/types/chat";
 
 function generateSessionId(): string {
-  return `session_${uuidv4().replace(/-/g, '').substring(0, 9)}`
+  return `session_${uuidv4().replace(/-/g, "").substring(0, 9)}`;
 }
 
 function parseAIContent(content: string): {
-  type: 'text' | 'chart'
-  text?: string
-  chartData?: ChartResponse['chart']
+  type: "text" | "chart";
+  text?: string;
+  chartData?: ChartResponse["chart"];
 } {
   try {
-    const parsed = JSON.parse(content)
+    const parsed = JSON.parse(content);
     // Check if it looks like chart data (has type and data properties)
     if (parsed.type && parsed.data) {
       return {
-        type: 'chart',
+        type: "chart",
         chartData: {
           type: parsed.type,
           data: parsed.data,
         },
-      }
+      };
     }
     // Not chart data, treat as text
-    return { type: 'text', text: content }
+    return { type: "text", text: content };
   } catch {
     // Not JSON, treat as plain text
-    return { type: 'text', text: content }
+    return { type: "text", text: content };
   }
 }
 
 function convertRawMessageToMessage(rawMessage: RawMessage): Message {
-  const isUser = rawMessage.author === 'USER'
+  const isUser = rawMessage.author === "USER";
 
   if (isUser) {
     return {
       id: rawMessage.id,
-      role: 'user',
+      role: "user",
       content: rawMessage.content,
       timestamp: new Date(rawMessage.created_at),
-    }
+    };
   }
 
   // AI message - determine if it's text or chart
-  const parsed = parseAIContent(rawMessage.content)
+  const parsed = parseAIContent(rawMessage.content);
 
-  if (parsed.type === 'chart' && parsed.chartData) {
+  if (parsed.type === "chart" && parsed.chartData) {
     return {
       id: rawMessage.id,
-      role: 'assistant',
-      content: '',
-      responseType: 'chart',
+      role: "assistant",
+      content: "",
+      responseType: "chart",
       chartData: parsed.chartData,
       timestamp: new Date(rawMessage.created_at),
-    }
+    };
   }
 
   return {
     id: rawMessage.id,
-    role: 'assistant',
+    role: "assistant",
     content: parsed.text || rawMessage.content,
-    responseType: 'text',
+    responseType: "text",
     timestamp: new Date(rawMessage.created_at),
-  }
+  };
 }
 
 export default function ChatInterface() {
-  const [messages, setMessages] = useState<Message[]>([])
-  const [input, setInput] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false)
-  const [sessionId, setSessionId] = useState<string | null>(null)
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [])
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
 
   useEffect(() => {
-    scrollToBottom()
-  }, [messages, isLoading, scrollToBottom])
+    scrollToBottom();
+  }, [messages, isLoading, scrollToBottom]);
 
   useEffect(() => {
     if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto'
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 150)}px`
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 150)}px`;
     }
-  }, [input])
+  }, [input]);
 
   const loadSessionMessages = async (selectedSessionId: string) => {
-    setIsLoadingHistory(true)
-    setMessages([])
-    setSessionId(selectedSessionId)
+    setIsLoadingHistory(true);
+    setMessages([]);
+    setSessionId(selectedSessionId);
 
     try {
-      const response = await fetch(`/api/sessions?id=${selectedSessionId}`)
-      const data: SessionMessagesResponse = await response.json()
+      const response = await fetch(`/api/sessions?id=${selectedSessionId}`);
+      const data: SessionMessagesResponse = await response.json();
 
-      if (data.status === 'success' && data.data?.sessions?.messages) {
+      if (data.status === "success" && data.data?.sessions?.messages) {
         // Messages come in reverse order (newest first), so we reverse them
-        const rawMessages = [...data.data.sessions.messages].reverse()
-        const convertedMessages = rawMessages.map(convertRawMessageToMessage)
-        setMessages(convertedMessages)
+        const rawMessages = [...data.data.sessions.messages].reverse();
+        const convertedMessages = rawMessages.map(convertRawMessageToMessage);
+        setMessages(convertedMessages);
       }
     } catch (error) {
-      console.error('Error loading session messages:', error)
+      console.error("Error loading session messages:", error);
     } finally {
-      setIsLoadingHistory(false)
+      setIsLoadingHistory(false);
     }
-  }
+  };
 
   const sendMessage = async () => {
-    if (!input.trim() || isLoading) return
+    if (!input.trim() || isLoading) return;
 
-    const currentSessionId = sessionId || generateSessionId()
+    const currentSessionId = sessionId || generateSessionId();
     if (!sessionId) {
-      setSessionId(currentSessionId)
+      setSessionId(currentSessionId);
     }
 
     const userMessage: Message = {
       id: uuidv4(),
-      role: 'user',
+      role: "user",
       content: input.trim(),
       timestamp: new Date(),
-    }
+    };
 
-    setMessages((prev) => [...prev, userMessage])
-    setInput('')
-    setIsLoading(true)
+    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
+    setIsLoading(true);
 
     if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto'
+      textareaRef.current.style.height = "auto";
     }
 
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
+      const response = await fetch("/api/chat", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           session_id: currentSessionId,
           message: userMessage.content,
         }),
-      })
+      });
 
-      const data: ApiResponse = await response.json()
+      const data: ApiResponse = await response.json();
 
-      if (data.status === 'success' && data.data) {
+      if (data.status === "success" && data.data) {
         const assistantMessage: Message = {
           id: uuidv4(),
-          role: 'assistant',
-          content: '',
+          role: "assistant",
+          content: "",
           timestamp: new Date(),
+        };
+
+        if (data.data.type === "text") {
+          const textData = data.data as TextResponse;
+          assistantMessage.content = textData.text.value;
+          assistantMessage.responseType = "text";
+        } else if (data.data.type === "chart") {
+          const chartData = data.data as ChartResponse;
+          assistantMessage.responseType = "chart";
+          assistantMessage.chartData = chartData.chart;
+          assistantMessage.analysis = chartData.analysis?.value;
+          assistantMessage.content = chartData.analysis?.value || "";
         }
 
-        if (data.data.type === 'text') {
-          const textData = data.data as TextResponse
-          assistantMessage.content = textData.text.value
-          assistantMessage.responseType = 'text'
-        } else if (data.data.type === 'chart') {
-          const chartData = data.data as ChartResponse
-          assistantMessage.responseType = 'chart'
-          assistantMessage.chartData = chartData.chart
-          assistantMessage.analysis = chartData.analysis?.value
-          assistantMessage.content = chartData.analysis?.value || ''
-        }
-
-        setMessages((prev) => [...prev, assistantMessage])
+        setMessages((prev) => [...prev, assistantMessage]);
       } else {
         const errorMessage: Message = {
           id: uuidv4(),
-          role: 'assistant',
-          content: data.message || 'Sorry, I encountered an error processing your request. Please try again.',
-          responseType: 'text',
+          role: "assistant",
+          content:
+            data.message ||
+            "Sorry, I encountered an error processing your request. Please try again.",
+          responseType: "text",
           timestamp: new Date(),
-        }
-        setMessages((prev) => [...prev, errorMessage])
+        };
+        setMessages((prev) => [...prev, errorMessage]);
       }
     } catch (error) {
-      console.error('Error sending message:', error)
+      console.error("Error sending message:", error);
       const errorMessage: Message = {
         id: uuidv4(),
-        role: 'assistant',
-        content: 'Sorry, I encountered an error processing your request. Please try again.',
-        responseType: 'text',
+        role: "assistant",
+        content:
+          "Sorry, I encountered an error processing your request. Please try again.",
+        responseType: "text",
         timestamp: new Date(),
-      }
-      setMessages((prev) => [...prev, errorMessage])
+      };
+      setMessages((prev) => [...prev, errorMessage]);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      sendMessage()
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
     }
-  }
+  };
 
   const handleNewChat = () => {
-    setMessages([])
-    setSessionId(null)
-    setInput('')
-  }
+    setMessages([]);
+    setSessionId(null);
+    setInput("");
+  };
 
   return (
     <div className="flex flex-col h-screen">
@@ -258,7 +261,9 @@ export default function ChatInterface() {
           </button>
           <Logo width={100} height={38} />
           <div className="hidden sm:block h-6 w-px bg-gray-300" />
-          <h1 className="hidden sm:block text-lg font-semibold text-primary">AI Assistant</h1>
+          <h1 className="hidden sm:block text-lg font-semibold text-primary">
+            AI Assistant
+          </h1>
         </div>
         <button
           onClick={handleNewChat}
@@ -279,17 +284,20 @@ export default function ChatInterface() {
           ) : messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full min-h-[60vh] text-center">
               <Logo width={150} height={58} className="mb-6 opacity-80" />
-              <h2 className="text-2xl font-semibold text-primary mb-2">Welcome to IOHealth AI</h2>
+              <h2 className="text-2xl font-semibold text-primary mb-2">
+                Welcome to IOHealth AI
+              </h2>
               <p className="text-gray-500 max-w-md">
-                Ask me anything about your healthcare data. I can help you analyze patient information,
-                generate reports, and visualize trends.
+                Ask me anything about your healthcare data. I can help you
+                analyze patient information, generate reports, and visualize
+                trends.
               </p>
               <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-lg">
                 {[
-                  'Show me the patient gender distribution',
-                  'What are the top diagnoses this month?',
-                  'How many patients visited last week?',
-                  'Display age distribution of patients',
+                  "Show me the patient gender distribution",
+                  "What are the top diagnoses this month?",
+                  "How many patients visited last week?",
+                  "How many outpatients are in the system?",
                 ].map((suggestion, index) => (
                   <button
                     key={index}
@@ -362,5 +370,5 @@ export default function ChatInterface() {
         </div>
       </div>
     </div>
-  )
+  );
 }
